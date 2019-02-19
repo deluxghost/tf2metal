@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 from collections import OrderedDict
 import decimal
 from decimal import Decimal as D
 from decimal import ROUND_DOWN
 import re
 import sys
-import traceback
 
-__version__ = '1.1.1'
+__version__ = '1.2.0'
 
 try:
     import colorama
@@ -16,14 +14,6 @@ try:
     COLOR = True
 except ImportError:
     COLOR = False
-
-try:
-    basestring
-except NameError:
-    basestring = str
-
-if sys.version_info[0] == 2:
-    input = raw_input
 
 operations = OrderedDict([
     ("+", lambda x, y: x + y),
@@ -33,6 +23,7 @@ operations = OrderedDict([
 ])
 
 symbols = operations.keys()
+
 
 class Metal(object):
 
@@ -62,6 +53,17 @@ class Metal(object):
             self.scrap -= D('0.5')
 
     def strfref(self, fmt):
+        """
+        %w - metal value in weapon
+        %s - metal value in scrap
+        %c - metal value in reclaimed
+        %r - metal value in refined
+        %W - weapon amount in normalize form (e.g. 2 ref 1 rec 2 scrap 1 weapon)
+        %S - scrap amount in normalize form
+        %C - reclaimed amount in normalize form
+        %R - refined amount in normalize form
+        %% - % character
+        """
         scrap = self.scrap
         ref_w = (scrap * D('2')).quantize(D('1'))
         ref_W = (scrap % D('1') * D('2')).quantize(D('1'))
@@ -126,7 +128,7 @@ class Metal(object):
     def __add__(self, other):
         if isinstance(other, Metal):
             data = self.scrap + other.scrap
-        elif isinstance(other, (int, float, D)) or isinstance(other, basestring):
+        elif isinstance(other, (int, float, D)) or isinstance(other, str):
             other = Metal(other)
             data = self.scrap + other.scrap
         else:
@@ -139,7 +141,7 @@ class Metal(object):
     def __sub__(self, other):
         if isinstance(other, Metal):
             data = self.scrap - other.scrap
-        elif isinstance(other, (int, float, D)) or isinstance(other, basestring):
+        elif isinstance(other, (int, float, D)) or isinstance(other, str):
             other = Metal(other)
             data = self.scrap - other.scrap
         else:
@@ -152,7 +154,7 @@ class Metal(object):
         return metal
 
     def __mul__(self, other):
-        if isinstance(other, (int, float, D)) or isinstance(other, basestring):
+        if isinstance(other, (int, float, D)) or isinstance(other, str):
             other = D(other)
             data = self.scrap * other
         else:
@@ -167,7 +169,7 @@ class Metal(object):
             data = self.scrap / other.scrap
             data = normalize(data.quantize(D('.01')))
             return data
-        elif isinstance(other, (int, float, D)) or isinstance(other, basestring):
+        elif isinstance(other, (int, float, D)) or isinstance(other, str):
             other = D(other)
             data = self.scrap / other
             return Metal(scrap=data)
@@ -212,6 +214,7 @@ class Metal(object):
     def __bool__(self):
         return self.__nonzero__()
 
+
 class ParserError(Exception):
 
     def __init__(self, message):
@@ -223,11 +226,12 @@ class ParserError(Exception):
         return '{0}({1})'.format(classname, repr(self.message))
 
     def __str__(self):
-        classname = self.__class__.__name__
         return self.message
+
 
 def normalize(d):
     return d.quantize(D('1')) if d == d.to_integral() else d.normalize()
+
 
 def convert(expr):
     words = [
@@ -268,6 +272,7 @@ def convert(expr):
         raise ParserError('Bad Currency')
     return Metal(ref, rec, scrap, wep)
 
+
 def lex(expr):
     tokens = []
     while expr:
@@ -303,6 +308,7 @@ def lex(expr):
             tokens[i] = convert(v)
     return tokens
 
+
 def evaluate(tokens):
     for symbol, func in operations.items():
         try:
@@ -328,6 +334,7 @@ def evaluate(tokens):
     else:
         raise ParserError('Bad Expression')
 
+
 def calc(expr):
     try:
         ans = evaluate(lex(expr))
@@ -341,6 +348,7 @@ def calc(expr):
         raise ParserError('Meaningless Operation')
     return ans
 
+
 def calc_str(expr):
     try:
         return calc(expr)
@@ -348,6 +356,7 @@ def calc_str(expr):
         return 'Error: {}'.format(e.message)
     except Exception as e:
         return 'Error: {}'.format(e.__class__.__name__)
+
 
 def _print_color(color, *args, **kw):
     args = list(args)
@@ -357,6 +366,7 @@ def _print_color(color, *args, **kw):
     else:
         args = [color + colorama.Style.RESET_ALL]
     print(*args, **kw)
+
 
 def _print_func(mode, *args, **kw):
     if COLOR:
@@ -373,8 +383,10 @@ def _print_func(mode, *args, **kw):
     else:
         print(*args, **kw)
 
+
 def _term_handler(signal, frame):
     sys.exit(0)
+
 
 if __name__ == '__main__':
     tool_name = 'TF2 Metal Calculator {}'.format(__version__)
@@ -392,7 +404,7 @@ if __name__ == '__main__':
                 print(answer.strfref('%rref'))
             elif isinstance(answer, D):
                 print('{}'.format(answer))
-            elif isinstance(answer, basestring):
+            elif isinstance(answer, str):
                 print(answer)
         sys.exit(0)
     if platform.system() == 'Windows' and getattr(sys, 'frozen', False):
@@ -410,7 +422,8 @@ if __name__ == '__main__':
         if expr.lower() == 'q' or expr.lower() == 'quit' or expr.lower() == 'exit':
             break
         elif expr.lower() == 'h' or expr.lower() == 'help' or expr == '?':
-            _print_func('info',
+            _print_func(
+                'info',
                 'Use ref, rec, scrap or wep as metal unit.\n'
                 'Examples:'
             )
@@ -430,5 +443,5 @@ if __name__ == '__main__':
         elif isinstance(answer, D):
             _print_func('equal', '= ', end='')
             _print_func('output', '{}'.format(answer))
-        elif isinstance(answer, basestring):
+        elif isinstance(answer, str):
             _print_func('error', answer)
