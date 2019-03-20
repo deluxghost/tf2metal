@@ -158,9 +158,10 @@ class Metal:
         return self.strfref('%r ref')
 
     def __repr__(self):
+        ref = self.strfref('%r')
         if self.__scrap < 0:
-            return f'-Metal({-self.__scrap})'
-        return f'Metal({self.__scrap})'
+            return f'-Metal({-ref})'
+        return f'Metal({ref})'
 
     def __neg__(self):
         data = -(self.__scrap)
