@@ -5,7 +5,7 @@ from decimal import Decimal as D
 decimal.setcontext(decimal.ExtendedContext)
 decimal.getcontext().prec = 18
 
-NormalizedMetal = collections.namedtuple('NormalizedMetal', ['refined', 'reclaimed', 'scrap', 'weapon'])
+NormalizedMetal = collections.namedtuple('NormalizedMetal', ['key', 'refined', 'reclaimed', 'scrap', 'weapon'])
 
 
 class _MetalInfo:
@@ -79,6 +79,18 @@ def _convert_from_scrap(scrap: D, metal_info) -> D:
     return metal * sign
 
 
+def _validate_key_rate(key_rate):
+    if isinstance(key_rate, Metal):
+        if key_rate.scrap <= D('0'):
+            raise ValueError('Key rate must be positive')
+        return
+    if isinstance(key_rate, RangeMetal):
+        if key_rate.start.scrap <= D('0') or key_rate.end.scrap <= D('0'):
+            raise ValueError('Key rate must be positive')
+        return
+    raise TypeError('Key rate must be either Metal or RangeMetal')
+
+
 class Metal:
 
     __scrap: D = None
@@ -125,13 +137,53 @@ class Metal:
     @property
     def normalized(self):
         metal = self.__scrap
+        if metal.is_infinite():
+            return NormalizedMetal(key=0, refined=metal, reclaimed=metal, scrap=metal, weapon=metal)
         ref = _normalize(metal // D('9'))
         metal = metal % D('9')
         rec = _normalize(metal // D('3'))
         metal = metal % D('3')
         scrap = _normalize(metal // D('1'))
         wep = _normalize(metal % D('1'))
-        return NormalizedMetal(refined=ref, reclaimed=rec, scrap=scrap, weapon=wep)
+        return NormalizedMetal(key=0, refined=ref, reclaimed=rec, scrap=scrap, weapon=wep)
+
+    def to_key(self, key_rate):
+        _validate_key_rate(key_rate)
+        if self.__scrap.is_infinite():
+            return self.__scrap
+        if isinstance(key_rate, Metal):
+            return _normalize(self / key_rate)
+        if isinstance(key_rate, RangeMetal):
+            start = _normalize(self / key_rate.end)
+            end = _normalize(self / key_rate.start)
+            if start > end:
+                start, end = end, start
+            if start == end:
+                return start
+            return (start, end)
+        return
+
+    def to_normalized_key(self, key_rate):
+        _validate_key_rate(key_rate)
+        metal = self.__scrap
+        if metal.is_infinite():
+            return NormalizedMetal(key=metal, refined=metal, reclaimed=metal, scrap=metal, weapon=metal)
+        if isinstance(key_rate, Metal):
+            key = metal // key_rate.scrap
+            pure_metal = Metal(scrap=metal % key_rate.scrap)
+            _, ref, rec, scrap, wep = pure_metal.normalized
+            return NormalizedMetal(key=key, refined=ref, reclaimed=rec, scrap=scrap, weapon=wep)
+        if isinstance(key_rate, RangeMetal):
+            start_val = self / key_rate.end
+            end_val = self / key_rate.start
+            start = self.to_normalized_key(key_rate.end)
+            end = self.to_normalized_key(key_rate.start)
+            if start_val > end_val:
+                start, end = end, start
+            if start == end:
+                return start
+            return (start, end)
+        return
 
     def __str__(self):
         return f'{self.refined} ref'
