@@ -25,14 +25,25 @@ def _is_number(obj):
 def _normalize(d: D) -> D:
     if d.is_finite():
         d = d.quantize(D('0.01'))
+        if d == d // D('1'):
+            return d.quantize(D('1'))
+        if d == d // D('0.1'):
+            return d.quantize(D('0.1'))
+        return d
     return d.normalize()
 
 
 def _convert_to_scrap(d: D, metal_info) -> D:
-    scrap_count, scrap_factor, weapon_factor = metal_info
+    if not d.is_finite():
+        return d
+    sign = D('1')
+    if d < 0:
+        d = -d
+        sign = D('-1')
+    scrap_amount, scrap_factor, weapon_factor = metal_info
     scrap = D('0')
     int_part = d // D('1')
-    scrap += scrap_count * int_part
+    scrap += scrap_amount * int_part
     dec_part = d % D('1')
     if dec_part > D('0.99'):
         dec_part = D('0.99')
@@ -46,14 +57,20 @@ def _convert_to_scrap(d: D, metal_info) -> D:
     else:
         weapon_range = weapon_factor
     scrap += (weapon_part / weapon_range) * D('0.5')
-    return scrap
+    return scrap * sign
 
 
 def _convert_from_scrap(scrap: D, metal_info) -> D:
-    scrap_count, scrap_factor, weapon_factor = metal_info
+    if not scrap.is_finite():
+        return scrap
+    sign = D('1')
+    if scrap < 0:
+        scrap = -scrap
+        sign = D('-1')
+    scrap_amount, scrap_factor, weapon_factor = metal_info
     metal = D('0')
-    metal += scrap // scrap_count
-    scrap = scrap % scrap_count
+    metal += scrap // scrap_amount
+    scrap = scrap % scrap_amount
     int_part = scrap // D('1')
     dec_part = scrap % D('1')
     metal += int_part * scrap_factor
@@ -64,7 +81,7 @@ def _convert_from_scrap(scrap: D, metal_info) -> D:
     else:
         weapon_range = weapon_factor
     metal += (dec_part / D('0.5')) * weapon_range
-    return metal
+    return metal * sign
 
 
 class Metal:
@@ -80,8 +97,9 @@ class Metal:
             self.__scrap += D('Inf')
         if D('-Inf') in all_currency:
             self.__scrap += D('-Inf')
-        if self.__scrap == D('NaN') or D('NaN') in all_currency:
-            raise ValueError('Metal must be a number')
+        for d in all_currency:
+            if self.__scrap.is_nan() or d.is_nan():
+                raise ValueError('Metal must be a number')
         if self.__scrap != D('0'):
             return
         push(D(weapon) / D('2'))
