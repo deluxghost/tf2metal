@@ -35,10 +35,8 @@ def _normalize(d: D) -> D:
 def _convert_to_scrap(d: D, metal_info) -> D:
     if not d.is_finite():
         return d
-    sign = D('1')
-    if d < D('0'):
-        d = -d
-        sign = D('-1')
+    sign = D('1') if d > D('0') else D('-1')
+    d = abs(d)
     scrap_amount, scrap_factor, weapon_factor = metal_info
     scrap = D('0')
     int_part = d // D('1')
@@ -62,10 +60,8 @@ def _convert_to_scrap(d: D, metal_info) -> D:
 def _convert_from_scrap(scrap: D, metal_info) -> D:
     if not scrap.is_finite():
         return scrap
-    sign = D('1')
-    if scrap < D('0'):
-        scrap = -scrap
-        sign = D('-1')
+    sign = D('1') if scrap > D('0') else D('-1')
+    scrap = abs(scrap)
     scrap_amount, scrap_factor, weapon_factor = metal_info
     metal = D('0')
     metal += scrap // scrap_amount
