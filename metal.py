@@ -1,3 +1,4 @@
+import collections
 import decimal
 from decimal import Decimal as D
 # from decimal import ROUND_DOWN
@@ -5,10 +6,20 @@ from decimal import Decimal as D
 decimal.setcontext(decimal.ExtendedContext)
 decimal.getcontext().prec = 18
 
+NormalizedMetal = collections.namedtuple('NormalizedMetal', ['refined', 'reclaimed', 'scrap', 'weapon'])
+
 
 class _MetalInfo:
     reclaimed = (D('3'), D('0.33'), D('0.16'))
     refined = (D('9'), D('0.11'), D('0.05'))
+
+
+def _is_number(obj):
+    try:
+        D(obj)
+        return True
+    except Exception:
+        return False
 
 
 def _normalize(d: D) -> D:
@@ -79,6 +90,10 @@ class Metal:
         push(_convert_to_scrap(D(ref), _MetalInfo.refined))
 
     @property
+    def _internal_scrap(self):
+        return self.__scrap
+
+    @property
     def weapon(self):
         return _normalize(self.__scrap * D('2'))
 
@@ -93,3 +108,93 @@ class Metal:
     @property
     def refined(self):
         return _normalize(_convert_from_scrap(self.__scrap, _MetalInfo.refined))
+
+    @property
+    def normalized(self):
+        metal = self.__scrap
+        ref = _normalize(metal // D('9'))
+        metal = metal % D('9')
+        rec = _normalize(metal // D('3'))
+        metal = metal % D('3')
+        scrap = _normalize(metal // D('1'))
+        wep = _normalize(metal % D('1'))
+        return NormalizedMetal(refined=ref, reclaimed=rec, scrap=scrap, weapon=wep)
+
+    def __str__(self):
+        return f'{self.refined} ref'
+
+    def __repr__(self):
+        if self.__scrap < 0:
+            return f'-Metal({-self.refined})'
+        return f'Metal({self.refined})'
+
+    def __neg__(self):
+        return Metal(scrap=-self.__scrap)
+
+    def __pos__(self):
+        return Metal(scrap=self.__scrap)
+
+    def __abs__(self):
+        return Metal(scrap=abs(self.__scrap))
+
+    def __add__(self, other):
+        if isinstance(other, Metal):
+            scrap = self.__scrap + other._internal_scrap
+            return Metal(scrap=scrap)
+        return NotImplemented
+
+    def __sub__(self, other):
+        if isinstance(other, Metal):
+            return self + (-other)
+        return NotImplemented
+
+    def __mul__(self, other):
+        if _is_number(other):
+            scrap = self.__scrap * D(other)
+            return Metal(scrap=scrap)
+        return NotImplemented
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __truediv__(self, other):
+        if isinstance(other, Metal):
+            scale = self.__scrap / other._internal_scrap
+            return scale
+        elif _is_number(other):
+            scrap = self.__scrap / D(other)
+            return Metal(scrap=scrap)
+        return NotImplemented
+
+    def __eq__(self, other):
+        if isinstance(other, Metal):
+            return self.__scrap == other._internal_scrap
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, Metal):
+            return self.__scrap != other._internal_scrap
+        return NotImplemented
+
+    def __ge__(self, other):
+        if isinstance(other, Metal):
+            return self.__scrap >= other._internal_scrap
+        return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, Metal):
+            return self.__scrap <= other._internal_scrap
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, Metal):
+            return self.__scrap > other._internal_scrap
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, Metal):
+            return self.__scrap < other._internal_scrap
+        return NotImplemented
+
+    def __bool__(self):
+        return self.__scrap != D('0')
