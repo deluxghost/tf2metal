@@ -3,16 +3,57 @@ from decimal import Decimal as D
 # from decimal import ROUND_DOWN
 
 decimal.setcontext(decimal.ExtendedContext)
-decimal.getcontext().prec = 15
+decimal.getcontext().prec = 18
 
 
-def _normalize(d: D):
+class _MetalInfo:
+    reclaimed = (D('3'), D('0.33'), D('0.16'))
+    refined = (D('9'), D('0.11'), D('0.05'))
+
+
+def _normalize(d: D) -> D:
     if d.is_finite():
         d = d.quantize(D('0.01'))
-        if d == d.to_integral():
-            return d.quantize(D('1'))
-        return d
     return d.normalize()
+
+
+def _convert_to_scrap(d: D, metal_info) -> D:
+    scrap_count, scrap_factor, weapon_factor = metal_info
+    scrap = D('0')
+    int_part = d // D('1')
+    scrap += scrap_count * int_part
+    dec_part = d % D('1')
+    if dec_part > D('0.99'):
+        dec_part = D('0.99')
+    scrap_part = dec_part // scrap_factor
+    weapon_part = dec_part % scrap_factor
+    scrap += scrap_part
+    if weapon_part > weapon_factor:
+        scrap += D('0.5')
+        weapon_part -= weapon_factor
+        weapon_range = scrap_factor - weapon_factor
+    else:
+        weapon_range = weapon_factor
+    scrap += (weapon_part / weapon_range) * D('0.5')
+    return scrap
+
+
+def _convert_from_scrap(scrap: D, metal_info) -> D:
+    scrap_count, scrap_factor, weapon_factor = metal_info
+    metal = D('0')
+    metal += scrap // scrap_count
+    scrap = scrap % scrap_count
+    int_part = scrap // D('1')
+    dec_part = scrap % D('1')
+    metal += int_part * scrap_factor
+    if dec_part > D('0.5'):
+        metal += weapon_factor
+        dec_part -= D('0.5')
+        weapon_range = scrap_factor - weapon_factor
+    else:
+        weapon_range = weapon_factor
+    metal += (dec_part / D('0.5')) * weapon_range
+    return metal
 
 
 class Metal:
@@ -34,16 +75,12 @@ class Metal:
             return
         push(D(weapon) / D('2'))
         push(D(scrap))
-        push(D(rec) // D('1') * D('3'))
-        rec_decimal = D(rec) % D('1') / D('0.33')
-        if rec_decimal > D('3'):
-            rec_decimal = D('3')
-        push(rec_decimal)
-        push(D(ref) // D('1') * D('9'))
-        ref_decimal = D(ref) % D('1') / D('0.11')
-        if ref_decimal > D('9'):
-            ref_decimal = D('9')
-        push(ref_decimal)
+        push(_convert_to_scrap(D(rec), _MetalInfo.reclaimed))
+        push(_convert_to_scrap(D(ref), _MetalInfo.refined))
+
+    @property
+    def weapon(self):
+        return _normalize(self.__scrap * D('2'))
 
     @property
     def scrap(self):
@@ -51,12 +88,8 @@ class Metal:
 
     @property
     def reclaimed(self):
-        return _normalize(self.__scrap / D('3'))
+        return _normalize(_convert_from_scrap(self.__scrap, _MetalInfo.reclaimed))
 
     @property
     def refined(self):
-        return _normalize(self.__scrap / D('9'))
-
-    @property
-    def weapon(self):
-        return _normalize(self.__scrap * D('2'))
+        return _normalize(_convert_from_scrap(self.__scrap, _MetalInfo.refined))
