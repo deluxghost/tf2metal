@@ -36,7 +36,7 @@ def _convert_to_scrap(d: D, metal_info) -> D:
     if not d.is_finite():
         return d
     sign = D('1')
-    if d < 0:
+    if d < D('0'):
         d = -d
         sign = D('-1')
     scrap_amount, scrap_factor, weapon_factor = metal_info
@@ -63,7 +63,7 @@ def _convert_from_scrap(scrap: D, metal_info) -> D:
     if not scrap.is_finite():
         return scrap
     sign = D('1')
-    if scrap < 0:
+    if scrap < D('0'):
         scrap = -scrap
         sign = D('-1')
     scrap_amount, scrap_factor, weapon_factor = metal_info
@@ -141,7 +141,7 @@ class Metal:
         return f'{self.refined} ref'
 
     def __repr__(self):
-        if self.__scrap < 0:
+        if self.__scrap < D('0'):
             return f'-Metal({-self.refined})'
         return f'Metal({self.refined})'
 
