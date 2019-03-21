@@ -1,7 +1,6 @@
 import collections
 import decimal
 from decimal import Decimal as D
-# from decimal import ROUND_DOWN
 
 decimal.setcontext(decimal.ExtendedContext)
 decimal.getcontext().prec = 18
@@ -187,11 +186,15 @@ class Metal:
     def __eq__(self, other):
         if isinstance(other, Metal):
             return self.__scrap == other._internal_scrap
+        if isinstance(other, RangeMetal):
+            return False
         return NotImplemented
 
     def __ne__(self, other):
         if isinstance(other, Metal):
             return self.__scrap != other._internal_scrap
+        if isinstance(other, RangeMetal):
+            return True
         return NotImplemented
 
     def __ge__(self, other):
@@ -216,3 +219,139 @@ class Metal:
 
     def __bool__(self):
         return self.__scrap != D('0')
+
+
+class RangeMetal:
+
+    __start = None
+    __end = None
+
+    def __new__(cls, start, end):
+        if not isinstance(start, Metal) or not isinstance(end, Metal):
+            raise TypeError('RangeMetal accepts Metal arguments only')
+        if start == end:
+            return start
+        return super().__new__(cls)
+
+    def __init__(self, start, end):
+        if start > end:
+            start, end = end, start
+        self.__start = start
+        self.__end = end
+
+    @property
+    def start(self):
+        return self.__start
+
+    @property
+    def end(self):
+        return self.__end
+
+    def __str__(self):
+        start = self.__start.refined
+        end = self.__end.refined
+        return f'{start} ~ {end} ref'
+
+    def __repr__(self):
+        start = repr(self.__start)
+        end = repr(self.__end)
+        return f'RangeMetal({start}, {end})'
+
+    def __iter__(self):
+        yield self.__start
+        yield self.__end
+
+    def __neg__(self):
+        return RangeMetal(-self.__end, -self.__start)
+
+    def __pos__(self):
+        return RangeMetal(self.__start, self.__end)
+
+    def __add__(self, other):
+        if isinstance(other, Metal):
+            start = self.__start + other
+            end = self.__end + other
+        elif isinstance(other, RangeMetal):
+            start = self.__start + other.start
+            end = self.__end + other.end
+        else:
+            return NotImplemented
+        return RangeMetal(start, end)
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        return self.__add__(-other)
+
+    def __rsub__(self, other):
+        return -self.__sub__(other)
+
+    def __mul__(self, other):
+        if _is_number(other):
+            start = self.__start * D(other)
+            end = self.__end * D(other)
+            return RangeMetal(start, end)
+        return NotImplemented
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __truediv__(self, other):
+        if isinstance(other, Metal):
+            start = self.__start / other
+            end = self.__end / other
+            if start == end:
+                return start
+            if start > end:
+                start, end = end, start
+            return (start, end)
+        elif isinstance(other, RangeMetal):
+            answers = [
+                self.__start / other.start,
+                self.__start / other.end,
+                self.__end / other.start,
+                self.__end / other.end
+            ]
+            start = min(answers)
+            end = max(answers)
+            if start == end:
+                return start
+            return (start, end)
+        elif _is_number(other):
+            start = self.__start / D(other)
+            end = self.__end / D(other)
+            return RangeMetal(start, end)
+        return NotImplemented
+
+    def __rtruediv__(self, other):
+        if isinstance(other, Metal):
+            start = other / self.__start
+            end = other / self.__end
+            if start == end:
+                return start
+            if start > end:
+                start, end = end, start
+            return (start, end)
+        return NotImplemented
+
+    def __eq__(self, other):
+        if isinstance(other, Metal):
+            return False
+        if isinstance(other, RangeMetal):
+            if self.__start == other.start and self.__end == other.end:
+                return True
+            return False
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, Metal):
+            return True
+        if isinstance(other, RangeMetal):
+            if self.__start == other.start and self.__end == other.end:
+                return False
+            return True
+        return NotImplemented
+
+    def __bool__(self):
+        return True
