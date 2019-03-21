@@ -13,7 +13,7 @@ class _MetalInfo:
     refined = (D('9'), D('0.11'), D('0.05'))
 
 
-def _is_number(obj):
+def _is_number(obj) -> bool:
     try:
         D(obj)
         return True
@@ -103,23 +103,23 @@ class Metal:
         push(_convert_to_scrap(D(ref), _MetalInfo.refined))
 
     @property
-    def _internal_scrap(self):
+    def _internal_scrap(self) -> D:
         return self.__scrap
 
     @property
-    def weapon(self):
+    def weapon(self) -> D:
         return _normalize(self.__scrap * D('2'))
 
     @property
-    def scrap(self):
+    def scrap(self) -> D:
         return _normalize(self.__scrap)
 
     @property
-    def reclaimed(self):
+    def reclaimed(self) -> D:
         return _normalize(_convert_from_scrap(self.__scrap, _MetalInfo.reclaimed))
 
     @property
-    def refined(self):
+    def refined(self) -> D:
         return _normalize(_convert_from_scrap(self.__scrap, _MetalInfo.refined))
 
     @property
@@ -236,11 +236,11 @@ class RangeMetal:
         self.__end = end
 
     @property
-    def start(self):
+    def start(self) -> Metal:
         return self.__start
 
     @property
-    def end(self):
+    def end(self) -> Metal:
         return self.__end
 
     def __str__(self):
