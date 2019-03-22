@@ -198,19 +198,70 @@ def _set_key_rate(expr):
     _print_func('output', f'You set exchange rate to 1 key = {KEY_RATE}')
 
 
+def _is_int(d: D) -> bool:
+    return d // D('1') == d
+
+
+def _normalized_metal_str(metal):
+    sign, key, ref, rec, scrap, wep = metal
+    output = list()
+    if key:
+        output.append(f'{key} key')
+    if ref:
+        output.append(f'{ref} ref')
+    if rec:
+        output.append(f'{rec} rec')
+    if scrap:
+        output.append(f'{scrap} scrap')
+    if wep:
+        output.append(f'{wep} wep')
+    output = ' '.join(output)
+    if sign < D('0'):
+        output = '-' + output
+    return output
+
+
+def _parse_key(metal):
+    if KEY_RATE is None:
+        return
+    key = metal.to_key(KEY_RATE)
+    if isinstance(key, tuple):
+        key_line = f'{key[0]} ~ {key[1]} key'
+    else:
+        key_line = f'{key} key'
+    _show_answer(key_line)
+
+
 def _parse_answer(expr):
     answer = calc(expr)
     if isinstance(answer, m.Metal):
-        _print_func('equal', '= ', end='')
-        _print_func('output', f'{answer}')
+        metal_line = str(answer)
+        _show_answer(metal_line)
+        if not _is_int(answer.refined):
+            normalized = _normalized_metal_str(answer.normalized)
+            metal_line = f'{normalized}'
+            _show_answer(metal_line)
+        _parse_key(answer)
     if isinstance(answer, m.RangeMetal):
-        _print_func('equal', '= ', end='')
-        _print_func('output', f'{answer}')
+        metal_line = str(answer)
+        _show_answer(metal_line)
+        if not _is_int(answer.start.refined) or not _is_int(answer.end.refined):
+            normalized_start = _normalized_metal_str(answer.start.normalized)
+            normalized_end = _normalized_metal_str(answer.end.normalized)
+            metal_line = f'{normalized_start} ~ {normalized_end}'
+            _show_answer(metal_line)
+        _parse_key(answer)
     elif isinstance(answer, D):
-        _print_func('equal', '= ', end='')
-        _print_func('output', f'{answer}')
+        _show_answer(answer)
+    elif isinstance(answer, tuple):
+        _show_answer(f'{answer[0]} ~ {answer[1]}')
     elif isinstance(answer, str):
         _print_func('error', answer)
+
+
+def _show_answer(answer):
+    _print_func('equal', '= ', end='')
+    _print_func('output', f'{answer}')
 
 
 def _show_help():
@@ -240,7 +291,7 @@ if __name__ == '__main__':
     _print_func('title', f'{tool_name} by deluxghost\nType "quit" to exit.\nType "help" to get more information.')
     while True:
         try:
-            _print_func('prompt', '>> ', end='')
+            _print_func('prompt', '\n>> ', end='')
             expr = input().strip()
         except EOFError:
             break

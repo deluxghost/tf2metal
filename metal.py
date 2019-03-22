@@ -21,9 +21,9 @@ def _is_number(obj) -> bool:
         return False
 
 
-def _normalize(d: D, key: bool = False) -> D:
+def _normalize(d: D, more: bool = False) -> D:
     if d.is_finite():
-        if key:
+        if more:
             d = d.quantize(D('0.001'))
         else:
             d = d.quantize(D('0.01'))
@@ -161,10 +161,10 @@ class Metal:
         if self.__scrap.is_infinite():
             return self.__scrap
         if isinstance(key_rate, Metal):
-            return _normalize(self / key_rate, key=True)
+            return _normalize(self / key_rate, more=True)
         if isinstance(key_rate, RangeMetal):
-            start = _normalize(self / key_rate.end, key=True)
-            end = _normalize(self / key_rate.start, key=True)
+            start = _normalize(self / key_rate.end, more=True)
+            end = _normalize(self / key_rate.start, more=True)
             if start > end:
                 start, end = end, start
             if start == end:
@@ -180,7 +180,7 @@ class Metal:
         if metal.is_infinite():
             return NormalizedMetal(sign=sign, key=metal, refined=metal, reclaimed=metal, scrap=metal, weapon=metal)
         if isinstance(key_rate, Metal):
-            key = _normalize(metal // key_rate.scrap, key=True)
+            key = _normalize(metal // key_rate.scrap, more=True)
             pure_metal = Metal(scrap=metal % key_rate.scrap)
             _, _, ref, rec, scrap, wep = pure_metal.normalized
             return NormalizedMetal(sign=sign, key=key, refined=ref, reclaimed=rec, scrap=scrap, weapon=wep)
@@ -236,7 +236,7 @@ class Metal:
     def __truediv__(self, other):
         if isinstance(other, Metal):
             scale = self.__scrap / other._internal_scrap
-            return scale
+            return _normalize(scale, more=True)
         elif _is_number(other):
             scrap = self.__scrap / D(other)
             return Metal(scrap=scrap)
@@ -414,8 +414,8 @@ class RangeMetal:
 
     def __truediv__(self, other):
         if isinstance(other, Metal):
-            start = self.__start / other
-            end = self.__end / other
+            start = _normalize(self.__start / other, more=True)
+            end = _normalize(self.__end / other, more=True)
             if start == end:
                 return start
             if start > end:
@@ -428,8 +428,8 @@ class RangeMetal:
                 self.__end / other.start,
                 self.__end / other.end
             ]
-            start = min(answers)
-            end = max(answers)
+            start = _normalize(min(answers), more=True)
+            end = _normalize(max(answers), more=True)
             if start == end:
                 return start
             return (start, end)
@@ -441,8 +441,8 @@ class RangeMetal:
 
     def __rtruediv__(self, other):
         if isinstance(other, Metal):
-            start = other / self.__start
-            end = other / self.__end
+            start = _normalize(other / self.__start, more=True)
+            end = _normalize(other / self.__end, more=True)
             if start == end:
                 return start
             if start > end:
