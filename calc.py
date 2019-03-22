@@ -68,7 +68,7 @@ def convert(expr: str):
         elif w == 'rec':
             metal = metal + m.Metal(rec=D(value))
         elif w == 'scrap':
-            metal = metal + m.Metal(srcap=D(value))
+            metal = metal + m.Metal(scrap=D(value))
         elif w == 'wep':
             metal = metal + m.Metal(wep=D(value))
     if expr:
@@ -174,6 +174,61 @@ def _term_handler(signal, frame):
     sys.exit(0)
 
 
+def _set_key_rate(expr):
+    global KEY_RATE
+    bad_rate_expr = 'Bad exchange rate expression'
+    expr = ''.join(expr.split())
+    if not expr.startswith('key='):
+        _print_func('error', bad_rate_expr)
+    rate = expr.split('=', 1)[1]
+    if '-' in expr or '~' in expr:
+        spl = '-' if '-' in expr else '~'
+        left, right = rate.split(spl, 1)
+        if not rate_pat.match(left) or not rate_pat.match(right):
+            _print_func('error', bad_rate_expr)
+            return
+        left, right = left.replace('ref', ''), right.replace('ref', '')
+        KEY_RATE = m.RangeMetal(m.Metal(left), m.Metal(right))
+    else:
+        if not rate_pat.match(rate):
+            _print_func('error', bad_rate_expr)
+            return
+        rate = rate.replace('ref', '')
+        KEY_RATE = m.Metal(rate)
+    _print_func('output', f'You set exchange rate to 1 key = {KEY_RATE}')
+
+
+def _parse_answer(expr):
+    answer = calc(expr)
+    if isinstance(answer, m.Metal):
+        _print_func('equal', '= ', end='')
+        _print_func('output', f'{answer}')
+    if isinstance(answer, m.RangeMetal):
+        _print_func('equal', '= ', end='')
+        _print_func('output', f'{answer}')
+    elif isinstance(answer, D):
+        _print_func('equal', '= ', end='')
+        _print_func('output', f'{answer}')
+    elif isinstance(answer, str):
+        _print_func('error', answer)
+
+
+def _show_help():
+    _print_func(
+        'info',
+        'Use ref, rec, scrap or wep as metal unit.\n'
+        'Examples:'
+    )
+    _print_func('prompt', '>> ', end='')
+    _print_func('input', '(2.33ref1rec * 3 + 3scrap) / 2')
+    _print_func('equal', '= ', end='')
+    _print_func('output', '4.16ref')
+    _print_func('prompt', '>> ', end='')
+    _print_func('input', '2.55ref * 4')
+    _print_func('equal', '= ', end='')
+    _print_func('output', '10.22ref')
+
+
 if __name__ == '__main__':
     tool_name = f'TF2 Metal Calculator {__version__}'
     import platform
@@ -194,51 +249,9 @@ if __name__ == '__main__':
         if expr.lower() in ['q', 'quit', 'exit']:
             break
         elif expr.lower() in ['h', 'help', '?']:
-            _print_func(
-                'info',
-                'Use ref, rec, scrap or wep as metal unit.\n'
-                'Examples:'
-            )
-            _print_func('prompt', '>> ', end='')
-            _print_func('input', '(2.33ref1rec * 3 + 3scrap) / 2')
-            _print_func('equal', '= ', end='')
-            _print_func('output', '4.16ref')
-            _print_func('prompt', '>> ', end='')
-            _print_func('input', '2.55ref * 4')
-            _print_func('equal', '= ', end='')
-            _print_func('output', '10.22ref')
+            _show_help()
             continue
         elif expr.lower().startswith('key'):
-            bad_rate_expr = 'Bad exchange rate expression'
-            expr = ''.join(expr.split())
-            if not expr.startswith('key='):
-                _print_func('error', bad_rate_expr)
-            rate = expr.split('=', 1)[1]
-            if '-' in expr or '~' in expr:
-                spl = '-' if '-' in expr else '~'
-                left, right = rate.split(spl, 1)
-                if not rate_pat.match(left) or not rate_pat.match(right):
-                    _print_func('error', bad_rate_expr)
-                    continue
-                left, right = left.replace('ref', ''), right.replace('ref', '')
-                KEY_RATE = m.RangeMetal(m.Metal(left), m.Metal(right))
-            else:
-                if not rate_pat.match(rate):
-                    _print_func('error', bad_rate_expr)
-                    continue
-                rate = rate.replace('ref', '')
-                KEY_RATE = m.Metal(rate)
-            _print_func('output', f'You set exchange rate to 1 key = {KEY_RATE}')
+            _set_key_rate(expr)
             continue
-        answer = calc(expr)
-        if isinstance(answer, m.Metal):
-            _print_func('equal', '= ', end='')
-            _print_func('output', f'{answer}')
-        if isinstance(answer, m.RangeMetal):
-            _print_func('equal', '= ', end='')
-            _print_func('output', f'{answer}')
-        elif isinstance(answer, D):
-            _print_func('equal', '= ', end='')
-            _print_func('output', f'{answer}')
-        elif isinstance(answer, str):
-            _print_func('error', answer)
+        _parse_answer(expr)
