@@ -1,4 +1,4 @@
 .PHONY: all
 
 all:
-	pyinstaller -F -w calc.py
+	pyinstaller -F calc.py

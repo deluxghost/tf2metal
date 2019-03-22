@@ -8,7 +8,7 @@ import colorama
 
 import metal as m
 
-__version__ = '2.0.0'
+__version__ = '2.0.0-beta'
 rate_pat = re.compile(r'^[\d.]+(?:ref)?$')
 KEY_RATE = None
 
@@ -267,7 +267,7 @@ def _show_answer(answer):
 def _show_help():
     _print_func(
         'info',
-        'Use ref, rec, scrap or wep as metal unit.\n'
+        'Use key, ref, rec, scrap or wep as metal unit.\n'
         'Examples:'
     )
     _print_func('prompt', '>> ', end='')
@@ -288,7 +288,13 @@ if __name__ == '__main__':
     if platform.system() == 'Windows' and getattr(sys, 'frozen', False):
         import ctypes
         ctypes.windll.kernel32.SetConsoleTitleW(tool_name)
-    _print_func('title', f'{tool_name} by deluxghost\nType "quit" to exit.\nType "help" to get more information.')
+    _print_func(
+        'title',
+        f'{tool_name} by deluxghost\n'
+        'Type "quit" to exit.\n'
+        'Type "help" to get more information.\n'
+        'Type "key=##.##ref" to set exchange rate (e.g. "key=44.11ref")'
+    )
     while True:
         try:
             _print_func('prompt', '\n>> ', end='')
